@@ -1,8 +1,3 @@
-"""djangoproj URL Configuration
-
-The `urlpatterns` list routes URLs to views.
-"""
-
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
@@ -21,5 +16,11 @@ urlpatterns = [
 
     # Contact page
     path('contact/', TemplateView.as_view(template_name="Contact.html")),
+
+    # Login page (React)
+    path('login/', TemplateView.as_view(template_name="index.html")),
+
+    # Register page (React)  <<< THIS IS THE ONE YOU ARE MISSING
+    path('register/', TemplateView.as_view(template_name="index.html")),
     
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
