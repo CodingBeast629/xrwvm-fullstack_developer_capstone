@@ -8,6 +8,9 @@ import logging
 from .models import CarMake, CarModel
 from .populate import initiate
 
+# REST helpers
+from .restapis import get_request, analyze_review_sentiments, post_review
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,3 +90,71 @@ def get_cars(request):
         })
 
     return JsonResponse({"CarModels": cars})
+
+
+# =======================
+# DEALERSHIPS (LAB REQUIREMENT)
+# =======================
+def get_dealerships(request, state="ALL"):
+    """
+    Returns list of dealerships.
+    - /fetchDealers for all
+    - /fetchDealers/<state> for a specific state
+    """
+    if state == "ALL":
+        endpoint = "/fetchDealers"
+    else:
+        endpoint = "/fetchDealers/" + state
+
+    dealerships = get_request(endpoint)
+    return JsonResponse({"status": 200, "dealers": dealerships})
+
+
+def get_dealer_details(request, dealer_id):
+    """
+    Returns a single dealer by id using /fetchDealer/<dealer_id>
+    """
+    endpoint = "/fetchDealer/" + dealer_id
+    dealer = get_request(endpoint)
+    return JsonResponse({"status": 200, "dealer": dealer})
+
+
+def get_dealer_reviews(request, dealer_id):
+    """
+    Returns reviews for a dealer using /fetchReviews/dealer/<dealer_id>
+    Adds sentiment for each review using the sentiment analyzer microservice.
+    """
+    endpoint = "/fetchReviews/dealer/" + dealer_id
+    reviews = get_request(endpoint)
+
+    # If backend returns None or something unexpected, avoid crashing
+    if not reviews:
+        reviews = []
+
+    for review in reviews:
+        review_text = review.get("review", "")
+        sentiment_response = analyze_review_sentiments(review_text)
+
+        # sentiment_response might be None if network error
+        if sentiment_response and isinstance(sentiment_response, dict):
+            review["sentiment"] = sentiment_response.get("sentiment")
+        else:
+            review["sentiment"] = None
+
+    return JsonResponse({"status": 200, "reviews": reviews})
+
+
+# =======================
+# ADD REVIEW (LAB REQUIREMENT)
+# =======================
+@csrf_exempt
+def add_review(request):
+    if request.user.is_anonymous == False:
+        data = json.loads(request.body)
+        try:
+            post_review(data)
+            return JsonResponse({"status": 200})
+        except:
+            return JsonResponse({"status": 401, "message": "Error in posting review"})
+    else:
+        return JsonResponse({"status": 403, "message": "Unauthorized"})
